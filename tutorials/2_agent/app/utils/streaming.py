@@ -3,7 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from pprint import pformat
+from textwrap import indent
 from typing import Any
+
+RESET = "\033[0m"
+BOLD = "\033[1m"
+BLUE = "\033[34m"
+CYAN = "\033[36m"
+GREEN = "\033[32m"
 
 
 def _message_text(message: Any) -> str:
@@ -52,12 +60,25 @@ def _tool_call_args(tool_call: Any) -> Any:
     return getattr(tool_call, "args", {})
 
 
+def _format_payload(payload: Any) -> str:
+    if isinstance(payload, str):
+        return payload.strip() or "(empty)"
+    return pformat(payload, sort_dicts=False)
+
+
+def _print_tool_block(title: str, body: Any) -> None:
+    color = CYAN if "[tool-result]" in title else BLUE
+    print(f"\n{BOLD}{color}{title}{RESET}")
+    print(indent(_format_payload(body), prefix="  "))
+
+
 def render_agent_stream(agent: Any, prompt: str, config: dict[str, Any]) -> None:
     """Render a LangChain/LangGraph agent stream in the terminal."""
     seen_tool_calls: set[str] = set()
     seen_tool_messages: set[str] = set()
     last_assistant_text = ""
     assistant_started = False
+    assistant_section_open = False
 
     stream_input = {"messages": [{"role": "user", "content": prompt}]}
     chunks: Iterable[dict[str, Any]] = agent.stream(
@@ -76,8 +97,12 @@ def render_agent_stream(agent: Any, prompt: str, config: dict[str, Any]) -> None
             if call_key in seen_tool_calls:
                 continue
             seen_tool_calls.add(call_key)
-            print(
-                f"[tool] {_tool_call_name(tool_call)} args={_tool_call_args(tool_call)}"
+            if assistant_section_open:
+                print()
+                assistant_section_open = False
+            _print_tool_block(
+                f"[tool] {_tool_call_name(tool_call)}",
+                {"args": _tool_call_args(tool_call)},
             )
 
         message_type = _message_type(message)
@@ -87,7 +112,10 @@ def render_agent_stream(agent: Any, prompt: str, config: dict[str, Any]) -> None
                 seen_tool_messages.add(tool_message_id)
                 tool_name = getattr(message, "name", "tool")
                 tool_text = _message_text(message)
-                print(f"[tool-result] {tool_name}: {tool_text}")
+                if assistant_section_open:
+                    print()
+                    assistant_section_open = False
+                _print_tool_block(f"[tool-result] {tool_name}", tool_text)
             continue
 
         if "ai" not in message_type and "assistant" not in message_type:
@@ -97,9 +125,12 @@ def render_agent_stream(agent: Any, prompt: str, config: dict[str, Any]) -> None
         if not text:
             continue
 
-        if not assistant_started:
-            print("Assistant: ", end="", flush=True)
+        if not assistant_section_open:
+            if assistant_started:
+                print()
+            print(f"{BOLD}{GREEN}Assistant:{RESET}")
             assistant_started = True
+            assistant_section_open = True
 
         if text.startswith(last_assistant_text):
             delta = text[len(last_assistant_text) :]
@@ -110,5 +141,5 @@ def render_agent_stream(agent: Any, prompt: str, config: dict[str, Any]) -> None
             print(delta, end="", flush=True)
             last_assistant_text = text
 
-    if assistant_started:
+    if assistant_section_open or assistant_started:
         print()

@@ -4,13 +4,24 @@ This project shows a simple setup for working with LangChain and an Assistant UI
 
 ## Installation
 
-Make sure you are using Python 3.10 or newer. Python 3.11 is a good default.
+Make sure you have Python 3.11 or newer installed.
 
 You can check your Python version with:
 
 ```bash
 python3 --version
 ```
+
+For a faster clean setup from the repository root, you can run:
+
+```bash
+make clean_install
+```
+
+That will remove `.venv`, recreate it, upgrade `pip`, and install everything from `requirements.txt`.
+It will use Python 3.11 or above if one is available on your machine.
+
+If you prefer to run the setup manually:
 
 Create a Python virtual environment named `.venv`:
 

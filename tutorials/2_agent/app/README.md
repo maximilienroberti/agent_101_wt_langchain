@@ -16,7 +16,19 @@ app/
 
 ## Setup
 
+Make sure you have Python 3.11 or newer installed.
+
 Make sure your virtual environment is activated.
+
+For a faster clean reinstall from the repository root, you can run:
+
+```bash
+make clean_install
+```
+
+That command will recreate `.venv` with Python 3.11 or above if one is available, then reinstall the dependencies from `requirements.txt`.
+
+If you prefer to do it manually, activate the virtual environment with one of the commands below.
 
 On macOS and Linux:
 
