@@ -2,6 +2,25 @@
 
 This project shows a simple setup for working with LangChain through notebooks and a terminal-based agent app.
 
+## Tutorial Overview
+
+This tutorial is split into three progressive steps:
+
+1. `tutorials/1_llm_101/main.ipynb`
+
+This notebook introduces the basics of how an LLM works with LangChain.
+It shows the core building blocks of prompting a model and helps explain why developers started thinking about agents in the first place: once a model can follow instructions, the next idea is to let it decide when to use tools and multi-step reasoning to complete a task.
+
+2. `tutorials/2_agent/main.ipynb`
+
+This notebook explains how an agent works inside a Jupyter notebook.
+It builds on the first tutorial by adding tools and memory, so you can see how LangChain turns a simple model call into an agent that can reason, call tools, and continue a conversation across steps.
+
+3. `tutorials/2_agent/app`
+
+This folder contains the CLI version of the same agent.
+It shows how to customize your agent in a more practical app format by editing the agent setup, tools, prompts, and terminal experience so you can use it directly from the command line.
+
 ## Installation
 
 Make sure you have Python 3.11 or newer installed.
