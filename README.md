@@ -1,6 +1,6 @@
-# LangChain with Assistant UI
+# LangChain Tutorial
 
-This project shows a simple setup for working with LangChain and an Assistant UI.
+This project shows a simple setup for working with LangChain through notebooks and a terminal-based agent app.
 
 ## Installation
 
