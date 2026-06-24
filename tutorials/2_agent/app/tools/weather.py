@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class WeatherInput(BaseModel):
-    city: str = Field(description="The city for which we want the weather.")
+    city: str = Field(description="The city for which we want the weather. Put only the city in lower case and do not add the country")
 
 
 @tool(args_schema=WeatherInput)

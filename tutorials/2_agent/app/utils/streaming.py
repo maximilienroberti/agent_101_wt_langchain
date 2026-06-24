@@ -12,6 +12,7 @@ BOLD = "\033[1m"
 BLUE = "\033[34m"
 CYAN = "\033[36m"
 GREEN = "\033[32m"
+SEPARATOR = "------------------------------"
 
 
 def _message_text(message: Any) -> str:
@@ -60,6 +61,34 @@ def _tool_call_args(tool_call: Any) -> Any:
     return getattr(tool_call, "args", {})
 
 
+def _tool_message_key(message: Any) -> str:
+    tool_call_id = getattr(message, "tool_call_id", None)
+    if tool_call_id:
+        return str(tool_call_id)
+
+    message_id = getattr(message, "id", None)
+    if message_id:
+        return str(message_id)
+
+    tool_name = getattr(message, "name", "tool")
+    tool_text = _message_text(message)
+    return f"{tool_name}:{tool_text}"
+
+
+def _is_user_message(message: Any) -> bool:
+    message_type = _message_type(message)
+    return "human" in message_type or "user" in message_type
+
+
+def _starting_message_index(messages: list[Any], prompt: str) -> int:
+    normalized_prompt = prompt.strip()
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if _is_user_message(message) and _message_text(message).strip() == normalized_prompt:
+            return index + 1
+    return len(messages)
+
+
 def _format_payload(payload: Any) -> str:
     if isinstance(payload, str):
         return payload.strip() or "(empty)"
@@ -74,6 +103,8 @@ def _print_tool_block(title: str, body: Any) -> None:
 
 def render_agent_stream(agent: Any, prompt: str, config: dict[str, Any]) -> None:
     """Render a LangChain/LangGraph agent stream in the terminal."""
+    processed_message_count: int | None = None
+    seen_messages: set[str] = set()
     seen_tool_calls: set[str] = set()
     seen_tool_messages: set[str] = set()
     last_assistant_text = ""
@@ -90,56 +121,67 @@ def render_agent_stream(agent: Any, prompt: str, config: dict[str, Any]) -> None
         if not messages:
             continue
 
-        message = messages[-1]
+        if processed_message_count is None:
+            processed_message_count = _starting_message_index(messages, prompt)
 
-        for tool_call in getattr(message, "tool_calls", []) or []:
-            call_key = _tool_call_key(tool_call)
-            if call_key in seen_tool_calls:
+        new_messages = messages[processed_message_count:]
+        processed_message_count = len(messages)
+
+        for message in new_messages:
+            message_key = str(getattr(message, "id", None) or id(message))
+            if message_key in seen_messages:
                 continue
-            seen_tool_calls.add(call_key)
-            if assistant_section_open:
-                print()
-                assistant_section_open = False
-            _print_tool_block(
-                f"[tool] {_tool_call_name(tool_call)}",
-                {"args": _tool_call_args(tool_call)},
-            )
+            seen_messages.add(message_key)
 
-        message_type = _message_type(message)
-        if "tool" in message_type:
-            tool_message_id = str(getattr(message, "id", None) or id(message))
-            if tool_message_id not in seen_tool_messages:
-                seen_tool_messages.add(tool_message_id)
-                tool_name = getattr(message, "name", "tool")
-                tool_text = _message_text(message)
+            for tool_call in getattr(message, "tool_calls", []) or []:
+                call_key = _tool_call_key(tool_call)
+                if call_key in seen_tool_calls:
+                    continue
+                seen_tool_calls.add(call_key)
                 if assistant_section_open:
                     print()
                     assistant_section_open = False
-                _print_tool_block(f"[tool-result] {tool_name}", tool_text)
-            continue
+                _print_tool_block(
+                    f"[tool] {_tool_call_name(tool_call)}",
+                    {"args": _tool_call_args(tool_call)},
+                )
 
-        if "ai" not in message_type and "assistant" not in message_type:
-            continue
+            message_type = _message_type(message)
+            if "tool" in message_type:
+                tool_message_id = _tool_message_key(message)
+                if tool_message_id not in seen_tool_messages:
+                    seen_tool_messages.add(tool_message_id)
+                    tool_name = getattr(message, "name", "tool")
+                    tool_text = _message_text(message)
+                    if assistant_section_open:
+                        print()
+                        assistant_section_open = False
+                    _print_tool_block(f"[tool-result] {tool_name}", tool_text)
+                continue
 
-        text = _message_text(message)
-        if not text:
-            continue
+            if "ai" not in message_type and "assistant" not in message_type:
+                continue
 
-        if not assistant_section_open:
-            if assistant_started:
-                print()
-            print(f"{BOLD}{GREEN}Assistant:{RESET}")
-            assistant_started = True
-            assistant_section_open = True
+            text = _message_text(message)
+            if not text:
+                continue
 
-        if text.startswith(last_assistant_text):
-            delta = text[len(last_assistant_text) :]
-        else:
-            delta = text
+            if not assistant_section_open:
+                if assistant_started:
+                    print()
+                print(f"{BOLD}{GREEN}Assistant:{RESET}")
+                assistant_started = True
+                assistant_section_open = True
 
-        if delta:
-            print(delta, end="", flush=True)
-            last_assistant_text = text
+            if text.startswith(last_assistant_text):
+                delta = text[len(last_assistant_text) :]
+            else:
+                delta = text
+
+            if delta:
+                print(delta, end="", flush=True)
+                last_assistant_text = text
 
     if assistant_section_open or assistant_started:
         print()
+        print(SEPARATOR)

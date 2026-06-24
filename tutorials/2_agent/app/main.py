@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 from agent import build_agent, build_config
 from utils import render_agent_stream
 
+RESET = "\033[0m"
+BOLD = "\033[1m"
+YELLOW = "\033[33m"
+
 
 def main() -> None:
     """Run a simple terminal chat loop."""
@@ -20,7 +24,7 @@ def main() -> None:
 
     while True:
         try:
-            prompt = input("You: ").strip()
+            prompt = input(f"{BOLD}{YELLOW}You:{RESET} ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nGoodbye.")
             break
